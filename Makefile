@@ -1,5 +1,5 @@
 .PHONY: run tidy download build validate fmt fmt-check lint fix check clean \
-	docker-build docker-run docker-reset docker-restart docker-stop docker-clean
+	docker-build docker-run docker-reset docker-stop docker-clean
 
 run:
 	uv run uvicorn src.main:app --reload --no-access-log --log-level warning
@@ -25,7 +25,7 @@ validate:
 check: tidy download fmt fix lint validate
 
 clean:
-	rm -rf .pytest_cache .ruff_cache __pycache__ src/**/__pycache__
+	rm -rf .venv .pytest_cache .ruff_cache __pycache__ src/__pycache__ src/**/__pycache__
 
 docker-build:
 	docker compose build
@@ -33,9 +33,7 @@ docker-build:
 docker-run:
 	docker compose up -d
 
-docker-reset:
-	docker compose down --volumes --remove-orphans
-	docker compose up -d
+docker-reset: docker-clean docker-run
 
 docker-stop:
 	docker compose down --remove-orphans
