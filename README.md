@@ -1,6 +1,6 @@
 # statline
 
-nba/wnba play by play stats data analytics platform
+nba play by play stats data pipeline
 
 ### How to run it locally
 
@@ -12,9 +12,14 @@ Then, run the following:
 # install dependencies, fmt, lint, validate
 > make check
 
-# run fastapi app locally (no clickhouse/kafka)
-> make run
-
-# or, run fastapi app, clickhouse, and kafka on docker
+# start spark, clickhouse, and kafka on docker
 > make docker-run
+
+# run each pipeline entrypoint locally
+> make run-batch
+> make run-producer
+> make run-consumer
+
+# run the entire pipeline
+> make run-pipeline
 ```

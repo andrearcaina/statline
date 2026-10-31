@@ -1,26 +1,15 @@
-from fastapi import FastAPI
+def main() -> None:
+    # Technically, each folder has its own entrypoint, this is only a way to run the
+    # complete pipeline at once for testing
 
-from src.api.handlers import Handler
-from src.config import Config
-from src.logger import Logger
-from src.middleware import request_logger
+    # batch: cdnnba.parquet -> PySpark -> partitioned/unpartitioned Parquet -> ClickHouse
+    #
+    # Stream: cdnnba.parquet -> producer -> Kafka -> consumer -> ClickHouse
+    #
+    # part 3 and 4 will be done later
 
-
-class Server:
-    def __init__(self) -> None:
-        self.config = Config()
-        self.logger = Logger(level=self.config.log_level)
-        self.api = FastAPI(
-            title="Statline API",
-            version="0.0.0",
-        )
-        # custom structured logging middleware (uvicorn default sucks)
-        self.api.middleware("http")(request_logger(self.logger))
-        # sample API handler
-        self.handler = Handler()
-        self.api.include_router(self.handler.router)
-        self.logger.info("server initialized")
+    print("Hello World")
 
 
-server = Server()
-app = server.api
+if __name__ == "__main__":
+    main()

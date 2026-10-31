@@ -1,8 +1,17 @@
-.PHONY: run tidy download build validate fmt fmt-check lint fix check clean \
+.PHONY: run-batch run-producer run-consumer run-pipeline tidy download build validate fmt fmt-check lint fix check clean \
 	docker-build docker-run docker-reset docker-stop docker-clean
 
-run:
-	uv run uvicorn src.main:app --reload --no-access-log --log-level warning
+run-batch:
+	uv run python -m src.batch.main
+
+run-producer:
+	uv run python -m src.stream.producer
+
+run-consumer:
+	uv run python -m src.stream.consumer
+
+run-pipeline:
+	uv run python -m src.main
 
 tidy:
 	uv lock
