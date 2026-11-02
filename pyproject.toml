@@ -5,6 +5,7 @@ description = "NBA play-by-play data pipeline"
 requires-python = ">=3.12"
 dependencies = [
     "pydantic-settings>=2.6",
+    "pyspark>=4.3.0",
 ]
 
 [dependency-groups]
