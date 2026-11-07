@@ -2,7 +2,7 @@
 	docker-build docker-run docker-reset docker-stop docker-clean
 
 run-batch:
-	uv run python -m src.batch.main
+	docker compose exec -T spark /opt/spark/bin/spark-submit src/batch/main.py
 
 run-producer:
 	uv run python -m src.stream.producer

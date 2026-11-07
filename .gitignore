@@ -221,3 +221,6 @@ __marimo__/
 
 # Local dataset files
 data/*.parquet
+
+# Folder for Parquet -> CSV operation that
+data/cdnnba_csv
