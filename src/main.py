@@ -1,6 +1,6 @@
 from .stream.consumer import consumer
 from .stream.producer import producer
-
+from .batch.main import batch_job
 
 def main() -> None:
     # Technically, each folder has its own entrypoint, this is only a way to run the
@@ -15,6 +15,7 @@ def main() -> None:
     # part 2
     # currently has a default DATA_PATH, will be partitioned parquet (or both)
     # later on after part 1 is complete
+    batch_job()
     producer()
     consumer()
 
