@@ -6,6 +6,8 @@ requires-python = ">=3.12"
 dependencies = [
     "pydantic-settings>=2.6",
     "pyspark>=4.3.0",
+    "confluent-kafka>=2.10",
+    "pyarrow>=18",
 ]
 
 [dependency-groups]

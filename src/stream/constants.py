@@ -1,0 +1,9 @@
+BOOTSTRAP_SERVERS = "localhost:9092"
+TOPIC = "nba-events"
+GROUP_ID = "statline-consumer-replay"
+PARTITION = 0
+BATCH_SIZE = 250_000
+PRINT_EVERY = 100_000
+COMMIT_EVERY = 10_000
+DATA_PATH = "data/cdnnba.parquet"
+END_MESSAGE_TYPE = "end"
