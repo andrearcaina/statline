@@ -1,26 +1,35 @@
-# statline
+# Statline
 
-nba play by play stats data pipeline
+An NBA play-by-play data pipeline
 
-### How to run it locally
+## Running locally
 
-Make sure you have `gnu make`, [`uv`](https://github.com/astral-sh/uv) and [`docker`](https://www.docker.com/get-started/) installed.
+Install [GNU Make](https://www.gnu.org/software/make/), [`uv`](https://docs.astral.sh/uv/), and [Docker](https://www.docker.com/get-started/).
 
-Then, run the following:
+Linux-based operating systems are highly recommended for ease of development and GNU Make accessibility. If you're on Windows, it is advised to use WSL2 with Docker Desktop.
+
+### Run everything
+
+This one command performs the project setup and validation, starts the Docker services, and runs the entire pipeline:
 
 ```sh
-# install dependencies, fmt, lint, validate
-> make check
-
-# start spark, clickhouse, and kafka on docker
-> make docker-run
-
-# run each pipeline entrypoint locally
-> make run-batch
-> make run-producer
-> make run-consumer
-
-# run the entire pipeline
-> make run-pipeline
+make run
 ```
 
+### Run each part separately
+
+```sh
+# Install dependencies, formatting, lint checks, and validation
+make check
+
+# Start Spark, ClickHouse, and Kafka services
+make docker-run
+
+# Run each pipeline entrypoint individually
+make run-batch
+make run-producer
+make run-consumer
+
+# Run the entire batch and streaming pipeline after Docker is running
+make run-pipeline
+```

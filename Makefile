@@ -1,5 +1,12 @@
-.PHONY: run-batch run-producer run-consumer run-pipeline tidy download build validate fmt fmt-check lint fix check clean \
+.PHONY: permissions run run-batch run-producer run-consumer run-pipeline \
+	tidy download build validate fmt fmt-check lint fix check clean \
 	docker-build docker-run docker-reset docker-stop docker-clean
+
+permissions:
+	chmod 777 data
+
+# run EVERYTHING with one command
+run: check docker-run run-pipeline
 
 run-batch:
 	docker compose exec -T spark /opt/spark/bin/spark-submit src/batch/main.py
@@ -10,10 +17,7 @@ run-producer:
 run-consumer:
 	uv run python -m src.stream.consumer
 
-run-pipeline:
-	$(MAKE) run-batch
-	$(MAKE) run-producer
-	$(MAKE) run-consumer
+run-pipeline: run-batch run-producer run-consumer
 
 tidy:
 	uv lock
@@ -33,7 +37,7 @@ lint:
 validate:
 	uv run python -m compileall -q src
 
-check: tidy download fmt fix lint validate
+check: permissions tidy download fmt fix lint validate
 
 clean:
 	rm -rf .venv .pytest_cache .ruff_cache __pycache__ src/__pycache__ src/**/__pycache__
