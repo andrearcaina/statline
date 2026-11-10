@@ -6,7 +6,19 @@ An NBA play-by-play data pipeline
 
 Install [GNU Make](https://www.gnu.org/software/make/), [`uv`](https://docs.astral.sh/uv/), and [Docker](https://www.docker.com/get-started/).
 
-Linux-based operating systems are highly recommended for ease of development and GNU Make accessibility. If you're on Windows, it is advised to use WSL2 with Docker Desktop.
+Linux-based operating systems are HIGHLY recommended for ease of development and native GNU Make support.
+
+If you're using Windows, we recommend WSL2 with Docker Desktop for a Linux-like development environment. 
+Alternatively, if you prefer working directly in Windows, you can install GNU Make using a package manager such as Chocolatey or Scoop:
+
+```sh
+# install using chocolately
+> choco install make
+
+# or scoop
+> scoop install make
+```
+This does however require you to first install [Chocolately](https://chocolatey.org/install) or [Scoop](https://scoop.sh/).
 
 ### Run everything
 
