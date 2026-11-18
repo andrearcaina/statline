@@ -11,14 +11,17 @@ from pyspark.sql import functions as F
 
 RAW = Path("data/cdnnba.parquet")
 CSV = Path("data/cdnnba_csv")
+SEASON_PARQUET = Path("data/cdnnba_by_season.parquet")
+SEASON_LAYOUT = "Season Parquet"
 # Handle quoted fields that span lines, and fail if a row cannot be parsed.
 CSV_OPTIONS = {"header": "true", "multiLine": "true", "escape": '"', "mode": "FAILFAST"}
 
 
 def scan_latest(df):
     # Include every source column in the result so the scan cannot prune columns.
+    # Sort columns because Spark can append YEAR after discovering it from the directory.
     # JSON gives a stable final tie-breaker without depending on file order.
-    row = F.to_json(F.struct("*"))
+    row = F.to_json(F.struct(*sorted(df.columns)))
     # Spark compares the fields in order. Game and action IDs break timestamp ties.
     key = F.struct(
         F.try_to_timestamp("timeActual"),
@@ -37,6 +40,11 @@ def main():
         action="store_true",
         help="Write CSV from raw Parquet before measuring.",
     )
+    parser.add_argument(
+        "--prepare-partitioned",
+        action="store_true",
+        help="Write Parquet grouped by season before measuring.",
+    )
     parser.add_argument("--sizes-only", action="store_true", help="Print sizes without running queries.")
     parser.add_argument("--runs", type=int, default=3)
     args = parser.parse_args()
@@ -44,6 +52,9 @@ def main():
         parser.error("--runs must be at least 1")
     if not args.prepare_csv and not CSV.exists():
         parser.error("CSV is missing. Run with --prepare-csv first.")
+
+    if not args.prepare_partitioned and not SEASON_PARQUET.exists():
+        parser.error("Season-partitioned Parquet is missing. Run with --prepare-partitioned first.")
 
     spark = SparkSession.builder.appName("StatlineDeepPart").config("spark.sql.session.timeZone", "UTC").getOrCreate()
     spark.sparkContext.setLogLevel("ERROR")
@@ -65,20 +76,33 @@ def main():
                 .csv(str(CSV))
             )
 
+        if args.prepare_partitioned:
+            print("Preparing Parquet partitioned by season (YEAR)...", flush=True)
+            # YEAR is the season's starting year. Spark writes directories such as YEAR=2021.
+            # The partitioned copy contains all source rows and shares the raw Parquet schema.
+            (spark.read.parquet(str(RAW)).write.mode("errorifexists").partitionBy("YEAR").parquet(str(SEASON_PARQUET)))
+
         # Each function opens its layout again for every benchmark run.
         baseline = "Raw Parquet"
         layouts = {
             baseline: lambda: spark.read.schema(raw_schema).parquet(str(RAW)),
             "CSV": lambda: spark.read.schema(raw_schema).options(**CSV_OPTIONS).csv(str(CSV)),
+            # Read from the root so Spark restores YEAR from the partition directories.
+            SEASON_LAYOUT: lambda: spark.read.schema(raw_schema).parquet(str(SEASON_PARQUET)),
         }
         # Count only data files. Spark also writes markers such as _SUCCESS.
         print("\nStorage sizes", flush=True)
         sizes = {}
-        for name, files in ((baseline, [RAW]), ("CSV", sorted(CSV.glob("part-*.csv")))):
+        for name, files in (
+            (baseline, [RAW]),
+            ("CSV", sorted(CSV.glob("part-*.csv"))),
+            (SEASON_LAYOUT, sorted(SEASON_PARQUET.rglob("part-*.parquet"))),
+        ):
             sizes[name] = sum(file.stat().st_size for file in files) / 1024**2
-            print(f"  {name:<12} {sizes[name]:>9,.2f} MiB ({len(files)} data files)")
-        size_change = (sizes["CSV"] / sizes[baseline] - 1) * 100
-        print(f"  CSV size vs. raw Parquet: {size_change:+.1f}%")
+            print(f"  {name:<16} {sizes[name]:>9,.2f} MiB ({len(files)} data files)")
+        for name in ("CSV", SEASON_LAYOUT):
+            size_change = (sizes[name] / sizes[baseline] - 1) * 100
+            print(f"  {name} size vs. raw Parquet: {size_change:+.1f}%")
         if args.sizes_only:
             return
 
@@ -102,9 +126,9 @@ def main():
             timings = {name: [] for name in layouts}
             for repeat in range(args.runs):
                 names = list(layouts)
-                # Alternate which layout runs first to reduce order effects.
-                if repeat % 2:
-                    names.reverse()
+                # Rotate the order so each layout goes first once in the default three runs.
+                offset = repeat % len(names)
+                names = names[offset:] + names[:offset]
                 for name in names:
                     print(f"  Run {repeat + 1}/{args.runs} · {name}...", flush=True)
                     # Time from opening the files through Spark returning the result.
@@ -129,18 +153,20 @@ def main():
                     f"({expected.total_field_goals:,} makes across {expected.games:,} games)."
                 )
             else:
-                print("  Verified: no matching games in either layout.")
+                print("  Verified: no matching games in any layout.")
 
             raw_average = mean(timings[baseline])
-            csv_average = mean(timings["CSV"])
-            change = (csv_average / raw_average - 1) * 100
-            comparisons.append((label, raw_average, csv_average, change))
+            for name, durations in timings.items():
+                average = mean(durations)
+                change = (average / raw_average - 1) * 100
+                comparisons.append((label, name, average, change))
 
-        print(f"\nAverage runtime comparison ({args.runs} timed runs per layout)")
-        print(f"  {'Workload':<12} {'Raw Parquet':>12} {'CSV':>12} {'CSV vs. Parquet':>16}")
-        for label, raw_average, csv_average, change in comparisons:
-            print(f"  {label:<12} {raw_average:>10.3f} s {csv_average:>10.3f} s {change:>+15.1f}%")
-        print("  A positive percentage means CSV took longer.")
+        print(f"\nAverage runtime comparison (timed runs per layout: {args.runs})")
+        print(f"  {'Workload':<12} {'Layout':<16} {'Average':>10} {'vs. Raw Parquet':>16}")
+        for label, name, average, change in comparisons:
+            difference = "baseline" if name == baseline else f"{change:+.1f}%"
+            print(f"  {label:<12} {name:<16} {average:>8.3f} s {difference:>16}")
+        print("  Positive percentages mean longer runtimes.")
     finally:
         spark.stop()
 
