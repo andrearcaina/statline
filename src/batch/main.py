@@ -1,5 +1,3 @@
-from pathlib import Path
-
 from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
 
@@ -22,38 +20,10 @@ SEASONS_BOUNDARIES = {
 STEPH_CURRY_ID = 201939
 LEBRON_JAMES_ID = 2544
 
-# Spark instance
-spark = SparkSession.builder.appName("BatchPart1").master("local[*]").getOrCreate()
-
-# Sanity while debugging
-spark.sparkContext.setLogLevel("ERROR")
-
-# Read in raw parquet file
-df = spark.read.parquet("data/cdnnba.parquet")
-
-# Create CSV for comparison
-df.write.mode("overwrite").option("header", True).csv("data/cdnnba_csv")
-
-
-def size_mb(path):
-    path = Path(path)
-
-    if path.is_file():
-        total_bytes = path.stat().st_size
-    else:
-        total_bytes = sum(file.stat().st_size for file in path.rglob("*") if file.is_file())
-
-    return total_bytes / 1_000_000
-
-
-# Minimum Functionality
-
 # Answer Q1: Based on his past performances, should I bet on Steph Curry making 7 three’s tonight?
 
 
 def q1(df):
-    print()
-    print("Spark Job for Q1: START")
     # Use const since player with same playerNameI exists: "Seth Curry"
     # Data does not give great resources to determine who is who reliably
     player_events = df.filter(F.col("personId") == STEPH_CURRY_ID)
@@ -66,24 +36,16 @@ def q1(df):
         F.sum(F.when(is_three & is_made, 1).otherwise(0)).alias("three_makes"),
     )
 
-    total_games = three_stats_per_game.count()
-    games_with_seven_plus = three_stats_per_game.filter(F.col("three_makes") >= 7).count()
-
-    percentage = games_with_seven_plus / total_games * 100 if total_games > 0 else None
-
-    print(f"Steph Curry made 7 or more threes in {percentage:.2f}% in all his games played from 2020-2025")
-    print("Chances of your bet hitting is unlikely!")
-
-    print()
-    print("Spark Job for Q1: END")
+    return three_stats_per_game.agg(
+        F.count("*").alias("games"),
+        F.count(F.when(F.col("three_makes") >= 7, 1)).alias("games_with_seven_plus"),
+    ).first()
 
 
 # Answer Q3: How many field goals did LeBron James make per game, on average, in the 2021-2022 season?
 
 
 def q3(df):
-    print()
-    print("Spark Job for Q3: START")
     start, end = SEASONS_BOUNDARIES["2021-2022"]
 
     player_events = df.filter(F.col("personId") == LEBRON_JAMES_ID)
@@ -96,46 +58,50 @@ def q3(df):
         F.sum(F.when(is_field_goal & is_made, 1).otherwise(0)).alias("field_goals_made")
     )
 
-    result = field_goals_per_game.agg(F.avg("field_goals_made").alias("avg_field_goals_per_game")).first()
-
-    average = result["avg_field_goals_per_game"]
-
-    print(f"Lebron James made an average of {average:.0f} field goals in all his games played in the 2021-2022 season")
-
-    print()
-    print("Spark Job for Q3: END")
-
-
-"""
-TODO:
-
-Deep:
-  - Convert Parquet raw file to a CSV DONE
-  - Create other Parquet file partitioned by season
-    - Subtask: Find beginning and ends of each season btwn. 2020-2025
-    - Use spark to partition by these start and end dates
-    - Write this somewhere
-  - Benchmarking
-    - Compare size of all 3
-    - Compare read time of all 3
-      - Use our original queries to get this done
-"""
+    return field_goals_per_game.agg(
+        F.count("*").alias("games"),
+        F.sum("field_goals_made").alias("total_field_goals"),
+        F.avg("field_goals_made").alias("avg_field_goals_per_game"),
+    ).first()
 
 
 def batch_job() -> None:
-    # Storage Format Comparisons
-    print()
-    print("Storage Format Comparison: START")
-    print("Chosen storage format is Parquet.")
-    print("Compare File Sizes:")
-    print(f"Parquet size: {size_mb('data/cdnnba.parquet'):.2f} MB")
-    print(f"CSV size: {size_mb('data/cdnnba_csv'):.2f} MB")
-    print("Storage Format Comparison: END")
-    print()
+    print("=== Statline batch job ===", flush=True)
+    print("Starting Spark...", flush=True)
+    spark = SparkSession.builder.appName("BatchPart1").master("local[*]").getOrCreate()
+    spark.sparkContext.setLogLevel("ERROR")
+    try:
+        print("Opening data/cdnnba.parquet...", flush=True)
+        df = spark.read.parquet("data/cdnnba.parquet")
 
-    # Spark Job Questions
-    q1(df)
-    q3(df)
+        print("\nQ1 | How often did Steph Curry make at least 7 threes in a game?", flush=True)
+        print("  Scope: all seasons in the dataset.")
+        print("  Counting made threes per game in Spark...", flush=True)
+        curry = q1(df)
+        if curry.games:
+            percentage = 100 * curry.games_with_seven_plus / curry.games
+            print(
+                f"  Result: {curry.games_with_seven_plus:,} of {curry.games:,} games ({percentage:.2f}%).", flush=True
+            )
+        else:
+            print("  No Steph Curry games found.", flush=True)
+
+        print("\nQ3 | How many field goals did LeBron James make per game in 2021-2022?", flush=True)
+        print("  Scope: 2021-2022 season. Includes made two-pointers and three-pointers.")
+        print("  Counting made field goals and averaging across games in Spark...", flush=True)
+        lebron = q3(df)
+        if lebron.games:
+            print(
+                f"  Result: {lebron.avg_field_goals_per_game:.2f} made field goals per game "
+                f"({lebron.total_field_goals:,} makes across {lebron.games:,} games).",
+                flush=True,
+            )
+        else:
+            print("  No LeBron James games found for 2021-2022.", flush=True)
+
+        print("\n=== Batch job complete ===", flush=True)
+    finally:
+        spark.stop()
 
 
 if __name__ == "__main__":
