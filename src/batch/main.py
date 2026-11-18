@@ -1,21 +1,6 @@
 from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
 
-# Season date sources:
-# 2020-2021: https://en.wikipedia.org/wiki/2020–21_NBA_season
-# 2021-2022: https://en.wikipedia.org/wiki/2021–22_NBA_season
-# 2022-2023: https://en.wikipedia.org/wiki/2022–23_NBA_season
-# 2023-2024: https://en.wikipedia.org/wiki/2023–24_NBA_season
-# 2024-2025: https://en.wikipedia.org/wiki/2024–25_NBA_season
-
-SEASONS_BOUNDARIES = {
-    "2020-2021": ("2020-12-22T00:00:00Z", "2021-07-21T00:00:00Z"),
-    "2021-2022": ("2021-10-19T00:00:00Z", "2022-06-17T00:00:00Z"),
-    "2022-2023": ("2022-10-18T00:00:00Z", "2023-06-13T00:00:00Z"),
-    "2023-2024": ("2023-10-24T00:00:00Z", "2024-06-18T00:00:00Z"),
-    "2024-2025": ("2024-10-22T00:00:00Z", "2025-06-23T00:00:00Z"),
-}
-
 # Useful for answering two specfied questions from this step
 STEPH_CURRY_ID = 201939
 LEBRON_JAMES_ID = 2544
@@ -46,10 +31,9 @@ def q1(df):
 
 
 def q3(df):
-    start, end = SEASONS_BOUNDARIES["2021-2022"]
-
     player_events = df.filter(F.col("personId") == LEBRON_JAMES_ID)
-    player_events_in_season = player_events.filter((F.col("timeActual") >= start) & (F.col("timeActual") < end))
+    # YEAR stores the season start. This filter lets Spark skip other season directories.
+    player_events_in_season = player_events.filter(F.col("YEAR") == 2021)
 
     is_field_goal = F.col("actionType").isin("2pt", "3pt")
     is_made = F.col("shotResult") == "Made"
