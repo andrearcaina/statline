@@ -1,4 +1,4 @@
-.PHONY: permissions run run-batch run-producer run-consumer run-pipeline \
+.PHONY: permissions run run-batch run-deep-part run-producer run-consumer run-pipeline \
 	tidy download build validate fmt fmt-check lint fix check clean \
 	docker-build docker-run docker-reset docker-stop docker-clean
 
@@ -10,6 +10,9 @@ run: check docker-run run-pipeline
 
 run-batch:
 	docker compose exec -T spark /opt/spark/bin/spark-submit src/batch/main.py
+
+run-deep-part:
+	docker compose exec -T spark /opt/spark/bin/spark-submit src/batch/deep_part.py
 
 run-producer:
 	uv run python -m src.stream.producer
