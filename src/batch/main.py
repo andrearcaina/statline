@@ -55,8 +55,26 @@ def batch_job() -> None:
     spark = SparkSession.builder.appName("BatchPart1").master("local[*]").getOrCreate()
     spark.sparkContext.setLogLevel("ERROR")
     try:
-        print("Opening data/cdnnba.parquet...", flush=True)
-        df = spark.read.parquet("data/cdnnba.parquet")
+        print("Opening data/cdnnba_by_season.parquet...", flush=True)
+        df = spark.read.parquet("data/cdnnba_by_season.parquet")
+
+        # Keep every player/game represented by an event, even with zero made shots.
+        # These reusable totals support all three serving queries, including Q2.
+        player_games = (
+            df.filter(F.col("personId") > 0)
+            .groupBy("YEAR", "personId", "gameId")
+            .agg(
+                F.sum(F.when(F.col("actionType") == "3pt", 1).otherwise(0)).alias("three_attempts"),
+                F.sum(F.when((F.col("actionType") == "3pt") & (F.col("shotResult") == "Made"), 1).otherwise(0)).alias(
+                    "three_makes"
+                ),
+                F.sum(
+                    F.when(F.col("actionType").isin("2pt", "3pt") & (F.col("shotResult") == "Made"), 1).otherwise(0)
+                ).alias("field_goals_made"),
+            )
+        )
+        player_games.write.mode("overwrite").parquet("data/batch_player_games.parquet")
+        print("Exported player/game results to data/batch_player_games.parquet for ClickHouse.", flush=True)
 
         print("\nQ1 | How often did Steph Curry make at least 7 threes in a game?", flush=True)
         print("  Scope: all seasons in the dataset.")
