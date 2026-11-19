@@ -45,3 +45,23 @@ make run-consumer
 # Run the entire batch and streaming pipeline after Docker is running
 make run-pipeline
 ```
+
+### Test data-quality rules
+
+The smoke test uses generated rows, so it does not require the NBA dataset:
+
+```sh
+make docker-run
+make test-quality
+```
+
+With `data/cdnnba.parquet` available, validate the real dataset or append five
+labelled bad rows to prove that each rule catches its expected failure:
+
+```sh
+make run-quality
+make run-quality-injected
+```
+
+Results are written to `data/quality/quality_report.json` and
+`data/quality/quarantine.parquet`.
