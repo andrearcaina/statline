@@ -1,4 +1,4 @@
-.PHONY: permissions run run-batch run-deep-part run-producer run-consumer run-pipeline \
+.PHONY: permissions run prepare-data run-batch run-deep-part run-producer run-consumer run-pipeline run-serve query-serve stream-results \
 	tidy download build validate fmt fmt-check lint fix check clean \
 	docker-build docker-run docker-reset docker-stop docker-clean
 
@@ -8,19 +8,37 @@ permissions:
 # run EVERYTHING with one command
 run: check docker-run run-pipeline
 
-run-batch:
+prepare-data: permissions
+	docker compose exec -T spark /opt/spark/bin/spark-submit src/batch/prepare.py
+
+run-batch: prepare-data
 	docker compose exec -T spark /opt/spark/bin/spark-submit src/batch/main.py
 
 run-deep-part:
 	docker compose exec -T spark /opt/spark/bin/spark-submit src/batch/deep_part.py --prepare-csv --prepare-partitioned
 
-run-producer:
+run-producer: prepare-data
 	uv run python -m src.stream.producer
 
 run-consumer:
 	uv run python -m src.stream.consumer
 
-run-pipeline: run-batch run-producer run-consumer
+run-serve:
+	uv run python -m src.serve.main load
+	uv run python -m src.serve.main query --output data/serve_measurements.json
+
+query-serve:
+	uv run python -m src.serve.main query --output data/serve_measurements.json
+
+stream-results:
+	uv run python -m src.serve.main stream
+
+run-pipeline:
+	$(MAKE) run-batch
+	$(MAKE) run-serve
+	$(MAKE) run-producer
+	$(MAKE) run-consumer
+	$(MAKE) stream-results
 
 tidy:
 	uv lock
@@ -49,7 +67,7 @@ docker-build:
 	docker compose build
 
 docker-run:
-	docker compose up -d
+	docker compose up -d --wait --wait-timeout 120
 
 docker-reset: docker-clean docker-run
 
