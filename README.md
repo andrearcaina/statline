@@ -58,6 +58,26 @@ make stream-results
 make run-pipeline
 ```
 
+### Test data-quality rules
+
+The smoke test uses generated rows, so it does not require the NBA dataset:
+
+```sh
+make docker-run
+make test-quality
+```
+
+With `data/cdnnba.parquet` available, validate the real dataset or append five
+labelled bad rows to prove that each rule catches its expected failure:
+
+```sh
+make run-quality
+make run-quality-injected
+```
+
+Results are written to `data/quality/quality_report.json` and
+`data/quality/quarantine.parquet`.
+
 The pipeline prepares Parquet partitioned by season (`YEAR`), runs Spark, loads
 its player/game results into ClickHouse, answers all three questions with timings,
 then publishes and consumes the Kafka replay. The consumer saves its running

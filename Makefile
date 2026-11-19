@@ -1,4 +1,5 @@
-.PHONY: permissions run prepare-data run-batch run-deep-part run-producer run-consumer run-pipeline run-serve query-serve stream-results \
+.PHONY: permissions run prepare-data run-batch run-deep-part run-quality run-quality-injected test-quality \
+	run-producer run-consumer run-pipeline run-serve query-serve stream-results \
 	tidy download build validate fmt fmt-check lint fix check clean \
 	docker-build docker-run docker-reset docker-stop docker-clean
 
@@ -18,6 +19,18 @@ run-deep-part:
 	docker compose exec -T spark /opt/spark/bin/spark-submit src/batch/deep_part.py \
 		$(if $(wildcard data/cdnnba_csv/_SUCCESS),,--prepare-csv) \
 		$(if $(wildcard data/cdnnba_by_season.parquet/_SUCCESS),,--prepare-partitioned)
+
+run-quality:
+	docker compose exec -T -e PYTHONPATH=/opt/spark/work-dir spark \
+		/opt/spark/bin/spark-submit src/quality/main.py
+
+run-quality-injected:
+	docker compose exec -T -e PYTHONPATH=/opt/spark/work-dir spark \
+		/opt/spark/bin/spark-submit src/quality/main.py --inject-known-bad
+
+test-quality:
+	docker compose exec -T -e PYTHONPATH=/opt/spark/work-dir spark \
+		/opt/spark/bin/spark-submit src/quality/test_bad_rows.py
 
 run-producer:
 	uv run python -m src.stream.producer
