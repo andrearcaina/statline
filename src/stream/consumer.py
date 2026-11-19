@@ -36,8 +36,8 @@ def consumer() -> None:
         rows = [
             {
                 "replay_id": replay_id,
-                "gameId": game,
-                "period": period,
+                "gameId": int(game),
+                "period": int(period),
                 "event_count": event_counts[(game, period)],
                 "received": received,
             }
@@ -62,7 +62,7 @@ def consumer() -> None:
                 print(f"done: received {received} rows; running counts saved to ClickHouse", flush=True)
                 break
 
-            event_key = (int(row["gameId"]), int(row["period"]))
+            event_key = (str(row["gameId"]), str(row["period"]))
             event_counts[event_key] += 1
             dirty.add(event_key)
             received += 1
@@ -70,10 +70,10 @@ def consumer() -> None:
             if received % COMMIT_EVERY == 0:
                 # Persist before committing offsets. Exactly-once recovery is outside Part 3.
                 save_counts()
-                kafka_consumer.commit(message=message, asynchronous=False)
+                kafka_consumer.commit(message=message, asynchronous=True)
 
             if received == 1 or received % PRINT_EVERY == 0:
-                print(f"received {received}: {event_key} has {event_counts[event_key]} events", flush=True)
+                print(f"received {received}: {event_key} has {event_counts[event_key]} events")
     except KeyboardInterrupt:
         print(f"stopped after {received} rows")
     finally:

@@ -17,7 +17,7 @@ run-batch: prepare-data
 run-deep-part:
 	docker compose exec -T spark /opt/spark/bin/spark-submit src/batch/deep_part.py --prepare-csv --prepare-partitioned
 
-run-producer: prepare-data
+run-producer:
 	uv run python -m src.stream.producer
 
 run-consumer:
@@ -67,7 +67,7 @@ docker-build:
 	docker compose build
 
 docker-run:
-	docker compose up -d --wait --wait-timeout 120
+	docker compose up -d
 
 docker-reset: docker-clean docker-run
 

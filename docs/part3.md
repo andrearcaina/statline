@@ -16,8 +16,9 @@ is required. The team's deep dive remains Part 1's storage experiment.
    and Q3. The loader validates its read/write row counts and swaps in a completed
    staging table atomically. Repeated loads replace the snapshot instead of
    appending duplicate player/game rows. Run only one batch loader at a time.
-4. The producer reads the same season layout and sorts by `timeActual` before
-   publishing to Kafka. The consumer keeps the existing running count by game and
+4. The existing producer still reads the original Parquet file, sorts by
+   `timeActual`, and publishes to Kafka with its original settings. The consumer
+   keeps the existing running count by game and
    period, saving changed counts to ClickHouse every 10,000 events and at replay end.
    It saves before committing offsets; database failures stop the consumer.
 5. `make stream-results` queries the stored running counts, one summary per
@@ -132,4 +133,5 @@ uv run python -m unittest discover -s tests -v
 Tests use their own temporary database and cover zero-make games, season ranking,
 season filtering, and avoiding double counting successive stream snapshots.
 Keep the team's AI acknowledgement current: AI assisted with the Docker repair,
-serving implementation, SQL, documentation, and verification.
+serving implementation, SQL, documentation, and verification. The Docker repair
+was local environment work; Docker and producer configuration are unchanged in this PR.
