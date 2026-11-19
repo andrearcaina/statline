@@ -16,6 +16,8 @@ is required. The team's deep dive remains Part 1's storage experiment.
    and Q3. The loader validates its read/write row counts and swaps in a completed
    staging table atomically. Repeated loads replace the snapshot instead of
    appending duplicate player/game rows. Run only one batch loader at a time.
+   Exports without Spark's `_SUCCESS` marker are rejected before any database
+   changes; rerun the batch job to finish an interrupted export.
 4. The existing producer still reads the original Parquet file, sorts by
    `timeActual`, and publishes to Kafka with its original settings. The consumer
    keeps the existing running count by game and
@@ -27,6 +29,11 @@ is required. The team's deep dive remains Part 1's storage experiment.
 `make run-pipeline` executes these steps in order. From a fresh clone with the
 documented prerequisites installed, download the dataset and run `make run`
 (two commands; the full run installs dependencies and starts services).
+
+`make run-deep-part` prepares only layouts that do not already have a `_SUCCESS`
+marker. It reuses the completed season layout created by the pipeline, so the
+storage experiment can run afterward without overwriting that layout. Incomplete
+existing layouts still fail rather than being silently reused or overwritten.
 
 ## ClickHouse tables
 
@@ -132,6 +139,8 @@ uv run python -m unittest discover -s tests -v
 
 Tests use their own temporary database and cover zero-make games, season ranking,
 season filtering, and avoiding double counting successive stream snapshots.
+Regression checks also cover reusing benchmark layouts and rejecting incomplete
+batch exports before any database access.
 Keep the team's AI acknowledgement current: AI assisted with the Docker repair,
 serving implementation, SQL, documentation, and verification. The Docker repair
 was local environment work; Docker and producer configuration are unchanged in this PR.

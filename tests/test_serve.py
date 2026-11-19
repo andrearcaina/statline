@@ -1,13 +1,32 @@
 """ClickHouse integration checks. Run after make docker-run; uses an isolated database."""
 
 import json
+import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 from uuid import uuid4
 
 from src.serve.client import execute, query
+from src.serve.main import load_batch
 
 SERVE = Path(__file__).resolve().parents[1] / "src/serve"
+
+
+class BatchExportCompletionTest(unittest.TestCase):
+    def test_unfinished_export_is_rejected_before_database_access(self):
+        with tempfile.TemporaryDirectory() as directory:
+            # A leftover part file must not be mistaken for a complete Spark export.
+            (Path(directory) / "part-00000.parquet").touch()
+            with (
+                patch("src.serve.main.BATCH_RESULTS", Path(directory)),
+                patch("src.serve.main.initialize", side_effect=AssertionError("Unexpected database access")) as init,
+                patch("src.serve.main.execute", side_effect=AssertionError("Unexpected database access")) as request,
+            ):
+                with self.assertRaisesRegex(RuntimeError, "missing _SUCCESS"):
+                    load_batch()
+                init.assert_not_called()
+                request.assert_not_called()
 
 
 class ServeQueriesTest(unittest.TestCase):

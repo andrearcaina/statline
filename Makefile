@@ -15,7 +15,9 @@ run-batch: prepare-data
 	docker compose exec -T spark /opt/spark/bin/spark-submit src/batch/main.py
 
 run-deep-part:
-	docker compose exec -T spark /opt/spark/bin/spark-submit src/batch/deep_part.py --prepare-csv --prepare-partitioned
+	docker compose exec -T spark /opt/spark/bin/spark-submit src/batch/deep_part.py \
+		$(if $(wildcard data/cdnnba_csv/_SUCCESS),,--prepare-csv) \
+		$(if $(wildcard data/cdnnba_by_season.parquet/_SUCCESS),,--prepare-partitioned)
 
 run-producer:
 	uv run python -m src.stream.producer

@@ -18,6 +18,8 @@ BATCH_RESULTS = ROOT / "data/batch_player_games.parquet"
 def load_batch() -> None:
     if not BATCH_RESULTS.is_dir():
         raise FileNotFoundError("Spark results missing. Run make run-batch first.")
+    if not (BATCH_RESULTS / "_SUCCESS").is_file():
+        raise RuntimeError("Spark results are incomplete (missing _SUCCESS). Rerun make run-batch before loading.")
     initialize()
     # Load a staging table, then publish the complete snapshot atomically.
     # A failed load leaves the last successful snapshot available to readers.
