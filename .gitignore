@@ -224,3 +224,6 @@ data/*.parquet
 
 # Folder for Parquet -> CSV operation that
 data/cdnnba_csv
+
+# Machine-specific serving measurements (regenerate with make query-serve).
+data/serve_measurements.json

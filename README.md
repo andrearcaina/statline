@@ -22,6 +22,12 @@ This does however require you to first install [Chocolately](https://chocolatey.
 
 ### Run everything
 
+Place the dataset at `data/cdnnba.parquet` first:
+
+```sh
+curl --fail -L -o data/cdnnba.parquet https://huggingface.co/datasets/Vladislav/nba_dataset/resolve/main/cdnnba.parquet
+```
+
 This one command performs the project setup and validation, starts the Docker services, and runs the entire pipeline:
 
 ```sh
@@ -38,9 +44,15 @@ make check
 make docker-run
 
 # Run each pipeline entrypoint individually
+make prepare-data
 make run-batch
+make run-serve
 make run-producer
 make run-consumer
+
+# Query already-loaded batch results or inspect persisted stream counts
+make query-serve
+make stream-results
 
 # Run the entire batch and streaming pipeline after Docker is running
 make run-pipeline
@@ -65,3 +77,11 @@ make run-quality-injected
 
 Results are written to `data/quality/quality_report.json` and
 `data/quality/quarantine.parquet`.
+
+The pipeline prepares Parquet partitioned by season (`YEAR`), runs Spark, loads
+its player/game results into ClickHouse, answers all three questions with timings,
+then publishes and consumes the Kafka replay. The consumer saves its running
+game/period counts in the same ClickHouse database every 10,000 events and at the end.
+
+See [Part 3: serving](docs/part3.md) for the SQL, table design, timing method,
+replay behavior, and report/demo instructions.
